@@ -177,28 +177,48 @@ func sortChanges(s []Change) {
 	})
 }
 
+func parseArgs(t *testing.T, name, args string) []string {
+	t.Helper()
+
+	result := make([]string, len(os.Args))
+
+	copy(result, os.Args)
+
+	if runtime.GOOS == windows {
+		args = strings.ReplaceAll(args, `\`, `₦`)
+	}
+
+	argsSlice, err := shellquote.Split(args)
+	if err != nil {
+		t.Fatalf(
+			"Test (%s) -> shellquote.Split(%s) yielded error: %v",
+			name,
+			args,
+			err,
+		)
+	}
+
+	if runtime.GOOS == windows {
+		for i, v := range argsSlice {
+			argsSlice[i] = strings.ReplaceAll(v, `₦`, `\`)
+		}
+	}
+
+	result = append(result[:1], argsSlice...)
+
+	return result
+}
+
 func runFindReplaceHelper(t *testing.T, cases []testCase) {
 	t.Helper()
 
 	for _, tc := range cases {
-		args := os.Args[0:1]
-
-		argsSlice, err := shellquote.Split(tc.args)
-		if err != nil {
-			t.Fatalf(
-				"Test (%s) -> shellquote.Split(%s) yielded error: %v",
-				tc.name,
-				tc.args,
-				err,
-			)
-		}
-
-		args = append(args, argsSlice...)
+		args := parseArgs(t, tc.name, tc.args)
 
 		result, err := testRun(args)
 		if err != nil {
 			t.Fatalf(
-				"Test (%s) -> testRun(%+q) yielded error: %v",
+				"Test (%s) -> testRun(%v) yielded error: %v",
 				tc.name,
 				tc.args,
 				err,
